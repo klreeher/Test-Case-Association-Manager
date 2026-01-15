@@ -97,7 +97,8 @@ namespace AssociateTestsToTestCases
             return new ITestFrameworkStrategy[]
             {
                 new MsTestStrategy(),
-                new XunitStrategy()
+                new XunitStrategy(),
+                new NUnitStrategy()
             };
         }
 

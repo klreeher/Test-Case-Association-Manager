@@ -93,7 +93,8 @@
             "required": true,
             "options": {
                 "mstest": "MSTest",
-                "xunit": "xUnit"
+                "xunit": "xUnit",
+                "nunit": "NUnit"
             },
             "helpMarkDown": "The type of Unit Test Framework."
 		},
