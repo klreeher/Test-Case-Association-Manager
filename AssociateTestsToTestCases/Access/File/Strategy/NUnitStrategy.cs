@@ -14,10 +14,10 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
             return testAssembly.GetTypes()
                     .Where(type => type.GetCustomAttribute<TestFixtureAttribute>() != null)
                     .SelectMany(type => type.GetMethods()
-                        .Where(method => method.GetCustomAttribute<TestAttribute>() != null 
-                            || method.GetCustomAttribute<TestCaseAttribute>() != null
-                            || method.GetCustomAttribute<TestCaseSourceAttribute>() != null
-                            || method.GetCustomAttribute<TheoryAttribute>() != null));
+                        .Where(method => method.GetCustomAttributes<TestAttribute>().Any() 
+                            || method.GetCustomAttributes<TestCaseAttribute>().Any()
+                            || method.GetCustomAttributes<TestCaseSourceAttribute>().Any()
+                            || method.GetCustomAttributes<TheoryAttribute>().Any()));
         }
     }
 }
