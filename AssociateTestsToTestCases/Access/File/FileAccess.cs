@@ -25,85 +25,61 @@ namespace AssociateTestsToTestCases.Access.File
 
             foreach (var testAssemblyPath in testAssemblyPaths)
             {
+                Console.WriteLine($"[DEBUG] Loading assembly: {testAssemblyPath}");
+
+                var testDir = Path.GetDirectoryName(testAssemblyPath);
+
+                ResolveEventHandler? handler = null;
+
+                if (!string.IsNullOrWhiteSpace(testDir))
+                {
+                    handler = (sender, args) =>
+                    {
+                        var requestedName = new AssemblyName(args.Name).Name;
+
+                        // If already loaded, reuse it
+                        var alreadyLoaded = AppDomain.CurrentDomain.GetAssemblies()
+                            .FirstOrDefault(a => string.Equals(a.GetName().Name, requestedName, StringComparison.OrdinalIgnoreCase));
+
+                        if (alreadyLoaded != null)
+                            return alreadyLoaded;
+
+                        var candidate = Path.Combine(testDir, requestedName + ".dll");
+                        if (System.IO.File.Exists(candidate))
+                        {
+                            Console.WriteLine($"[DEBUG] Resolving '{args.Name}' from '{candidate}'");
+                            return Assembly.LoadFrom(candidate);
+                        }
+
+                        return null;
+                    };
+
+                    AppDomain.CurrentDomain.AssemblyResolve += handler;
+                }
+
                 try
                 {
                     var testAssembly = _assemblyHelper.LoadFrom(testAssemblyPath);
-                    testMethods.AddRange(_testFrameWorkStrategy.RetrieveTestMethods(testAssembly));
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    // Some types couldn't be loaded (likely missing dependencies like NUnit framework)
-                    // Try to discover tests from successfully loaded types using fallback mechanism
-                    var loadedTypes = ex.Types.Where(t => t != null).ToList();
-                    Console.WriteLine($"[DEBUG] ReflectionTypeLoadException caught for {testAssemblyPath}");
-                    Console.WriteLine($"[DEBUG] Successfully loaded {loadedTypes.Count} type(s) out of {ex.Types.Length} total");
-                    if (ex.LoaderExceptions != null && ex.LoaderExceptions.Length > 0)
-                    {
-                        var nunitErrors = ex.LoaderExceptions.Where(e => e?.Message?.Contains("nunit", StringComparison.OrdinalIgnoreCase) == true).Take(3);
-                        foreach (var error in nunitErrors)
-                        {
-                            Console.WriteLine($"[DEBUG] Loader error: {error?.Message}");
-                        }
-                    }
-                    
-                    int testFixtureCount = 0;
-                    // Use the strategy's fallback by manually checking types
-                    foreach (var type in loadedTypes)
-                    {
-                        try
-                        {
-                            // Check if it's a test fixture using fallback (by attribute name)
-                            var isTestFixture = false;
-                            try
-                            {
-                                var attributes = type.GetCustomAttributesData();
-                                isTestFixture = attributes.Any(a => 
-                                    a.AttributeType.FullName == "NUnit.Framework.TestFixtureAttribute");
-                            }
-                            catch
-                            {
-                                // Skip if we can't check attributes
-                                continue;
-                            }
+                    Console.WriteLine($"[DEBUG] Assembly loaded: {testAssembly.FullName}");
 
-                            if (isTestFixture)
-                            {
-                                testFixtureCount++;
-                                Console.WriteLine($"[DEBUG] Found test fixture: {type.FullName}");
-                                var methods = type.GetMethods()
-                                    .Where(method =>
-                                    {
-                                        try
-                                        {
-                                            var methodAttributes = method.GetCustomAttributesData();
-                                            return methodAttributes.Any(a => 
-                                                a.AttributeType.FullName == "NUnit.Framework.TestAttribute" ||
-                                                a.AttributeType.FullName == "NUnit.Framework.TestCaseAttribute" ||
-                                                a.AttributeType.FullName == "NUnit.Framework.TestCaseSourceAttribute" ||
-                                                a.AttributeType.FullName == "NUnit.Framework.TheoryAttribute");
-                                        }
-                                        catch
-                                        {
-                                            return false;
-                                        }
-                                    }).ToList();
-                                Console.WriteLine($"[DEBUG] Found {methods.Count} test method(s) in {type.FullName}");
-                                testMethods.AddRange(methods);
-                            }
-                        }
-                        catch
-                        {
-                            // Skip types that cause issues
-                            continue;
-                        }
+                    var discoveredMethods = _testFrameWorkStrategy.RetrieveTestMethods(testAssembly).ToList();
+                    Console.WriteLine($"[DEBUG] Strategy discovered {discoveredMethods.Count} test method(s)");
+                    testMethods.AddRange(discoveredMethods);
+
+                    Console.WriteLine($"[DEBUG] Loaded assemblies containing 'nunit':");
+                    foreach (var a in AppDomain.CurrentDomain.GetAssemblies()
+                                 .Where(a => a.GetName().Name.Contains("nunit", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Console.WriteLine($"[DEBUG]   {a.FullName} @ {a.Location}");
                     }
-                    Console.WriteLine($"[DEBUG] Total test fixtures found: {testFixtureCount}, Total test methods: {testMethods.Count}");
                 }
-                catch (Exception ex)
+                finally
                 {
-                    Console.WriteLine($"[DEBUG] Exception loading assembly {testAssemblyPath}: {ex.GetType().Name} - {ex.Message}");
-                    throw;
+                    if (handler != null)
+                        AppDomain.CurrentDomain.AssemblyResolve -= handler;
                 }
+
+
             }
 
             Console.WriteLine($"[DEBUG] Total test methods discovered across all assemblies: {testMethods.Count}");
