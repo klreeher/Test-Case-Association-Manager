@@ -90,14 +90,29 @@ namespace AssociateTestsToTestCases.Access.File
         {
             var duplicateTestMethods = new List<DuplicateTestMethod>();
 
-            var duplicates = testMethods.Select(x => x.Name).GroupBy(x => x).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            var duplicates = testMethods
+                .Select(m => $"{m.DeclaringType?.FullName}.{MethodKey(m)}")
+                .GroupBy(x => x)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
             foreach (var duplicate in duplicates)
             {
-                duplicateTestMethods.Add(new DuplicateTestMethod(duplicate, testMethods.Where(y => y.Name.Equals(duplicate)).ToArray()));
+                duplicateTestMethods.Add(new DuplicateTestMethod(
+                    duplicate,
+                    testMethods
+                        .Where(m => $"{m.DeclaringType?.FullName}.{MethodKey(m)}" == duplicate)
+                        .ToArray()
+                ));
             }
 
             return duplicateTestMethods;
         }
+        static string MethodKey(MethodInfo m) =>
+            $"{m.DeclaringType?.FullName}.{m.Name}(" +
+            string.Join(",", m.GetParameters().Select(p => p.ParameterType.FullName)) +
+            ")";
 
         public string[] ListTestAssemblyPaths(string directory, string[] minimatchPatterns)
         {
