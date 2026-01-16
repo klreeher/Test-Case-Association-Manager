@@ -6,7 +6,8 @@ variables:
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
-trigger: none
+trigger: 
+  - '*'
 
 pr:
 - master

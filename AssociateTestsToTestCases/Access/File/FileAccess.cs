@@ -25,8 +25,65 @@ namespace AssociateTestsToTestCases.Access.File
 
             foreach (var testAssemblyPath in testAssemblyPaths)
             {
-                var testAssembly = _assemblyHelper.LoadFrom(testAssemblyPath);
-                testMethods.AddRange(_testFrameWorkStrategy.RetrieveTestMethods(testAssembly));
+                try
+                {
+                    var testAssembly = _assemblyHelper.LoadFrom(testAssemblyPath);
+                    testMethods.AddRange(_testFrameWorkStrategy.RetrieveTestMethods(testAssembly));
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    // Some types couldn't be loaded (likely missing dependencies like NUnit framework)
+                    // Try to discover tests from successfully loaded types using fallback mechanism
+                    var loadedTypes = ex.Types.Where(t => t != null).ToList();
+                    
+                    // Use the strategy's fallback by manually checking types
+                    foreach (var type in loadedTypes)
+                    {
+                        try
+                        {
+                            // Check if it's a test fixture using fallback (by attribute name)
+                            var isTestFixture = false;
+                            try
+                            {
+                                var attributes = type.GetCustomAttributesData();
+                                isTestFixture = attributes.Any(a => 
+                                    a.AttributeType.FullName == "NUnit.Framework.TestFixtureAttribute");
+                            }
+                            catch
+                            {
+                                // Skip if we can't check attributes
+                                continue;
+                            }
+
+                            if (isTestFixture)
+                            {
+                                var methods = type.GetMethods()
+                                    .Where(method =>
+                                    {
+                                        try
+                                        {
+                                            var methodAttributes = method.GetCustomAttributesData();
+                                            return methodAttributes.Any(a => 
+                                                a.AttributeType.FullName == "NUnit.Framework.TestAttribute" ||
+                                                a.AttributeType.FullName == "NUnit.Framework.TestCaseAttribute" ||
+                                                a.AttributeType.FullName == "NUnit.Framework.TestCaseSourceAttribute" ||
+                                                a.AttributeType.FullName == "NUnit.Framework.TheoryAttribute");
+                                        }
+                                        catch
+                                        {
+                                            return false;
+                                        }
+                                    });
+                                testMethods.AddRange(methods);
+                            }
+                        }
+                        catch
+                        {
+                            // Skip types that cause issues
+                            continue;
+                        }
+                    }
+                }
             }
 
             return testMethods.ToArray();
