@@ -53,11 +53,12 @@ namespace AssociateTestsToTestCases.Access.DevOps
         {
             foreach (var testMethod in testMethods)
             {
+                var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
+                
                 var testCase = GetTestCase(testCases, testMethod);
                 var testCaseNotFound = testCase == null;
                 if (testCaseNotFound)
                 {
-                    var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
                     _outputAccess.WriteToConsole(string.Format(_messages.Associations.TestMethodInfo, testMethod.Name, formattedName), _messages.Types.Error, _messages.Reasons.MissingTestCase);
                     _counter.Error.TestCaseNotFound++;
                     continue;
@@ -67,7 +68,6 @@ namespace AssociateTestsToTestCases.Access.DevOps
                 var testCaseHasAutomatedStatus = testCase.AutomationStatus.Equals(AutomatedName);
                 if (testCaseHasAutomatedStatus)
                 {
-                    var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
                     var testCaseIsAlreadyAutomated = testCase.AutomatedTestName.Equals(formattedName);
                     if (testCaseIsAlreadyAutomated)
                     {
@@ -82,7 +82,6 @@ namespace AssociateTestsToTestCases.Access.DevOps
                     }
                 }
 
-                var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
                 var operationSuccess = AssociateTestCaseWithTestMethod(testCase.Id, formattedName, testMethod.AssemblyName, testMethod.TempId.ToString(), _inputOptions.TestType);
                 if (!operationSuccess)
                 {
