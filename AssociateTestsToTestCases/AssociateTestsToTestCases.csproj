@@ -9,6 +9,7 @@
         None
     </ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
     <LangVersion>latest</LangVersion>
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>

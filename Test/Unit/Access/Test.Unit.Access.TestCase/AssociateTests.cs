@@ -28,6 +28,17 @@ namespace Test.Unit.Access.DevOps
         private const string AutomatedTestIdName = "Microsoft.VSTS.TCM.AutomatedTestId";
         private const string AutomationStatusName = "Microsoft.VSTS.TCM.AutomationStatus";
         private const string AutomatedTestStorageName = "Microsoft.VSTS.TCM.AutomatedTestStorage";
+        private const string DefaultTestNameFormat = "{FullClassName}.{Name}";
+
+        private InputOptions CreateInputOptions(bool validationOnly = true, bool verboseLogging = true, string testNameFormat = null)
+        {
+            return new InputOptions()
+            {
+                ValidationOnly = validationOnly,
+                VerboseLogging = verboseLogging,
+                TestNameFormat = testNameFormat ?? DefaultTestNameFormat
+            };
+        }
 
         [TestMethod]
         public void DevOpsAccess_Associate_TestCaseIsNull()
@@ -46,7 +57,8 @@ namespace Test.Unit.Access.DevOps
             var options = new InputOptions()
             {
                 ValidationOnly = true,
-                VerboseLogging = true
+                VerboseLogging = true,
+                TestNameFormat = "{FullClassName}.{Name}" // Default format
             };
             var counter = new Counter();
 
@@ -80,13 +92,9 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
             var testMethods = fixture.Create<TestMethod[]>();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, AutomatedName, $"{x.FullClassName}.{x.Name}")).ToArray();
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
+            
+            var options = CreateInputOptions();
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), AutomatedName, TestNameFormatter.Format(x, options.TestNameFormat))).ToArray();
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -118,7 +126,8 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
             var testMethods = fixture.Create<TestMethod[]>();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, AutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions(verboseLogging: false);
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), AutomatedName, string.Empty)).ToArray();
 
             var methodName = fixture.Create<string>();
             var assemblyName = fixture.Create<string>();
@@ -137,12 +146,6 @@ namespace Test.Unit.Access.DevOps
             workItemTrackingHttpClient
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = false
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -176,7 +179,8 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
             var testMethods = fixture.Create<TestMethod[]>();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, AutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions();
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), AutomatedName, string.Empty)).ToArray();
 
             var methodName = fixture.Create<string>();
             var assemblyName = fixture.Create<string>();
@@ -196,11 +200,6 @@ namespace Test.Unit.Access.DevOps
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
 
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -234,7 +233,8 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
             var testMethods = fixture.CreateMany<TestMethod>(1).ToArray();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, AutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions(verboseLogging: false);
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), AutomatedName, string.Empty)).ToArray();
             var result = new Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models.WorkItem
             {
                 Fields = new Dictionary<string, object>()
@@ -242,19 +242,13 @@ namespace Test.Unit.Access.DevOps
                                 { AutomationStatusName, AutomatedName },
                                 { AutomatedTestIdName, testMethods[0].TempId },
                                 { AutomatedTestStorageName, testMethods[0].AssemblyName },
-                                { AutomatedTestName,  $"{testMethods[0].FullClassName}.{testMethods[0].Name}" }
+                                { AutomatedTestName, TestNameFormatter.Format(testMethods[0], options.TestNameFormat) }
                             }
             };
 
             workItemTrackingHttpClient
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = false
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -289,7 +283,8 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
             var testMethods = fixture.CreateMany<TestMethod>(1).ToArray();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, AutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions();
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), AutomatedName, string.Empty)).ToArray();
             var result = new Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models.WorkItem
             {
                 Fields = new Dictionary<string, object>()
@@ -297,19 +292,13 @@ namespace Test.Unit.Access.DevOps
                                 { AutomationStatusName, AutomatedName },
                                 { AutomatedTestIdName, testMethods[0].TempId },
                                 { AutomatedTestStorageName, testMethods[0].AssemblyName },
-                                { AutomatedTestName,  $"{testMethods[0].FullClassName}.{testMethods[0].Name}" }
+                                { AutomatedTestName, TestNameFormatter.Format(testMethods[0], options.TestNameFormat) }
                             }
             };
 
             workItemTrackingHttpClient
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -343,7 +332,8 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
             var testMethods = fixture.Create<TestMethod[]>();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, NotAutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions();
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), NotAutomatedName, string.Empty)).ToArray();
 
             var methodName = fixture.Create<string>();
             var assemblyName = fixture.Create<string>();
@@ -363,11 +353,6 @@ namespace Test.Unit.Access.DevOps
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
 
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -403,7 +388,8 @@ namespace Test.Unit.Access.DevOps
             var messages = new Messages();
 
             var testMethods = fixture.CreateMany<TestMethod>(1).ToArray();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, NotAutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions(verboseLogging: false);
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), NotAutomatedName, string.Empty)).ToArray();
             var result = new Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models.WorkItem
             {
                 Fields = new Dictionary<string, object>()
@@ -411,19 +397,13 @@ namespace Test.Unit.Access.DevOps
                                 { AutomationStatusName, AutomatedName },
                                 { AutomatedTestIdName, testMethods[0].TempId },
                                 { AutomatedTestStorageName, testMethods[0].AssemblyName },
-                                { AutomatedTestName,  $"{testMethods[0].FullClassName}.{testMethods[0].Name}" }
+                                { AutomatedTestName, TestNameFormatter.Format(testMethods[0], options.TestNameFormat) }
                             }
             };
 
             workItemTrackingHttpClient
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = false
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -459,7 +439,8 @@ namespace Test.Unit.Access.DevOps
             var messages = new Messages();
 
             var testMethods = fixture.CreateMany<TestMethod>(1).ToArray();
-            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), x.Name, NotAutomatedName, string.Empty)).ToArray();
+            var options = CreateInputOptions();
+            var testCases = testMethods.Select(x => new TestCase(fixture.Create<int>(), TestNameFormatter.Format(x, options.TestNameFormat), NotAutomatedName, string.Empty)).ToArray();
             var result = new Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models.WorkItem
             {
                 Fields = new Dictionary<string, object>()
@@ -467,7 +448,7 @@ namespace Test.Unit.Access.DevOps
                                 { AutomationStatusName, AutomatedName },
                                 { AutomatedTestIdName, testMethods[0].TempId },
                                 { AutomatedTestStorageName, testMethods[0].AssemblyName },
-                                { AutomatedTestName,  $"{testMethods[0].FullClassName}.{testMethods[0].Name}" }
+                                { AutomatedTestName, TestNameFormatter.Format(testMethods[0], options.TestNameFormat) }
                             }
             };
 
@@ -475,11 +456,6 @@ namespace Test.Unit.Access.DevOps
                 .Setup(x => x.UpdateWorkItemAsync(It.IsAny<JsonPatchDocument>(), It.IsAny<int>(), It.IsAny<bool?>(), null, null, null, null, default))
                 .ReturnsAsync(result);
 
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()

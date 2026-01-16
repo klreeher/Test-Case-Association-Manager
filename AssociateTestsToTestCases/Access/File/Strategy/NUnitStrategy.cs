@@ -58,14 +58,14 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
 
                 try
                 {
-                    // Always scan methods first (implicit fixtures are common in NUnit)
+                    // Always scan methods first
                     var methods = type
                         .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                         .Where(IsTestMethod)
                         .ToList();
 
-                    // Fixture if explicitly marked OR it contains test methods
-                    if (IsTestFixture(type) || methods.Count > 0)
+                    // Only include classes explicitly marked as TestFixture that have test methods
+                    if (IsTestFixture(type) && methods.Count > 0)
                     {
                         testFixtureCount++;
                         Console.WriteLine($"[DEBUG] NUnitStrategy: Found test fixture: {type.FullName}");

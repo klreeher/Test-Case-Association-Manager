@@ -21,6 +21,17 @@ namespace Test.Unit.Access.DevOps
     {
         private const string AutomatedName = "Automated";
         private const string NotAutomatedName = "Not Automated";
+        private const string DefaultTestNameFormat = "{FullClassName}.{Name}";
+
+        private InputOptions CreateInputOptions(bool validationOnly = true, bool verboseLogging = true, string testNameFormat = null)
+        {
+            return new InputOptions()
+            {
+                ValidationOnly = validationOnly,
+                VerboseLogging = verboseLogging,
+                TestNameFormat = testNameFormat ?? DefaultTestNameFormat
+            };
+        }
 
         [TestMethod]
         public void DevOpsAccess_ListTestCasesWithNotAvailableTestMethods_EmptyListTestCasesWithNotAvailableTestMethodsWhereAutomationStatusIsEqualToAutomatedName()
@@ -34,15 +45,15 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
 
-            fixture.Customize<TestCase>(c => c.With(x => x.AutomationStatus, AutomatedName));
-            var testCases =  fixture.Create<TestCase[]>();
-            var testMethods = testCases.Select(x => new TestMethod(x.Title, string.Empty, string.Empty, Guid.NewGuid())).ToArray();
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
+            var options = CreateInputOptions();
+            
+            // Create test methods first, then create test cases with titles matching the formatted names
+            var testMethods = fixture.Create<TestMethod[]>();
+            var testCases = testMethods.Select(x => new TestCase(
+                fixture.Create<int>(), 
+                TestNameFormatter.Format(x, options.TestNameFormat), 
+                AutomatedName, 
+                string.Empty)).ToArray();
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -72,15 +83,9 @@ namespace Test.Unit.Access.DevOps
             var fixture = new Fixture();
             var messages = new Messages();
 
-            fixture.Customize<TestCase>(c => c.With(x => x.AutomationStatus, NotAutomatedName));
-            var testCases = fixture.Create<TestCase[]>();
+            var options = CreateInputOptions();
             var testMethods = fixture.Create<TestMethod[]>();
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
+            var testCases = fixture.Create<TestCase[]>();
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
@@ -110,15 +115,12 @@ namespace Test.Unit.Access.DevOps
             var messages = new Messages();
             var fixture = new Fixture();
 
+            var options = CreateInputOptions();
+            // Create test cases with automated status, but test methods that don't match
             fixture.Customize<TestCase>(c => c.With(x => x.AutomationStatus, AutomatedName));
             var testCases = fixture.Create<TestCase[]>();
+            // Create test methods with empty values so they won't match the test case titles
             var testMethods = testCases.Select(x => new TestMethod(string.Empty, string.Empty, string.Empty, Guid.NewGuid())).ToArray();
-
-            var options = new InputOptions()
-            {
-                ValidationOnly = true,
-                VerboseLogging = true
-            };
             var counter = new Counter();
 
             var azureDevOpsHttpClients = new AzureDevOpsHttpClients()
