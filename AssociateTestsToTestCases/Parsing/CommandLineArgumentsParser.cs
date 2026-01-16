@@ -28,22 +28,47 @@ namespace AssociateTestsToTestCases.Parsing
                 parser.ParseArguments<Options>(args)
                     .WithParsed(o =>
                     {
+                        _inputOptions.CsvOut = o.CsvOut;
                         _inputOptions.TestType = o.TestType;
                         _inputOptions.DebugMode = o.DebugMode;
                         _inputOptions.Directory = o.Directory;
                         _inputOptions.ProjectName = o.ProjectName;
-                        _inputOptions.TestPlanId = int.Parse(o.TestPlanId);
-                        _inputOptions.TestSuiteId = int.Parse(o.TestSuiteId);
                         _inputOptions.CollectionUri = o.CollectionUri;
                         _inputOptions.ValidationOnly = o.ValidationOnly;
                         _inputOptions.VerboseLogging = o.VerboseLogging;
                         _inputOptions.PersonalAccessToken = o.PersonalAccessToken;
-                        _inputOptions.MinimatchPatterns = o.MinimatchPatterns.Split(';').Select(s => s.ToLowerInvariant()).ToArray();
+                        _inputOptions.MinimatchPatterns = o.MinimatchPatterns
+                            .Split(';')
+                            .Select(s => s.ToLowerInvariant())
+                            .ToArray();
                         _inputOptions.TestFrameworkType = o.TestFrameworkType;
+
+                        var csvMode = !string.IsNullOrWhiteSpace(o.CsvOut);
+                        if (!csvMode)
+                        {
+                            _inputOptions.TestPlanId = int.Parse(o.TestPlanId);
+                            _inputOptions.TestSuiteId = int.Parse(o.TestSuiteId);
+                        }
                     });
+
             }
 
-            ValidateInputOptions(_inputOptions);
+            var csvMode = !string.IsNullOrWhiteSpace(_inputOptions.CsvOut);
+            if (!csvMode)
+            {
+                ValidateInputOptions(_inputOptions);
+            }
+            else
+            {
+                // Minimal validation so CSV mode still fails fast on the basics
+                if (string.IsNullOrWhiteSpace(_inputOptions.Directory))
+                    throw new InvalidOperationException("Directory is required for CSV export.");
+                if (_inputOptions.MinimatchPatterns == null || _inputOptions.MinimatchPatterns.Length == 0)
+                    throw new InvalidOperationException("MinimatchPatterns is required for CSV export.");
+                if (string.IsNullOrWhiteSpace(_inputOptions.TestFrameworkType))
+                    throw new InvalidOperationException("TestFrameworkType is required for CSV export.");
+            }
+
 
             _commandLineAccess.WriteToConsole(_messages.Stages.Argument.Success, _messages.Types.Success);
             return _inputOptions;

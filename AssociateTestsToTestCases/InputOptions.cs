@@ -4,6 +4,8 @@
     {
         public bool DebugMode { get; set; }
 
+        public string CsvOut { get; set; } // null = not in CSV mode
+
         public bool ValidationOnly { get; set; }
         public bool VerboseLogging { get; set; }
 

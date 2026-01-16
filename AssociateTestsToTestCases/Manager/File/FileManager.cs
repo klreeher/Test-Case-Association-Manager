@@ -27,15 +27,18 @@ namespace AssociateTestsToTestCases.Manager.File
             return _fileAccess.ListTestMethods(testAssemblyPaths).IsNullOrEmpty();
         }
 
-        public TestMethod[] GetTestMethods(string[] testAssemblyPaths)
+        public TestMethod[] GetTestMethods(string[] testAssemblyPaths, bool allowDuplicates = false)
         {
             _outputAccess.WriteToConsole(_messages.Stages.TestMethod.Status, _messages.Types.Stage);
 
             var rawTestMethods = _fileAccess.ListTestMethods(testAssemblyPaths);
             ValidateTestMethodsIsNullOrEmpty(rawTestMethods);
 
-            var duplicateTestMethods = _fileAccess.ListDuplicateTestMethods(rawTestMethods);
-            ValidateTestMethodsHasDuplicates(duplicateTestMethods);
+            if (!allowDuplicates)
+            {
+                var duplicateTestMethods = _fileAccess.ListDuplicateTestMethods(rawTestMethods);
+                ValidateTestMethodsHasDuplicates(duplicateTestMethods);
+            }
 
             _outputAccess.WriteToConsole(string.Format(_messages.Stages.TestMethod.Success, rawTestMethods.Length), _messages.Types.Success);
 

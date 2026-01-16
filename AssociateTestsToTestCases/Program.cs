@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Diagnostics;
+using System.Reflection;
 using AssociateTestsToTestCases.Message;
 using AssociateTestsToTestCases.Parsing;
 using Microsoft.TeamFoundation.Core.WebApi;
@@ -16,6 +17,8 @@ using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using TestMethod = AssociateTestsToTestCases.Manager.File.TestMethod;
 using AssociateTestsToTestCases.Access.File.Strategy;
+using AssociateTestsToTestCases.Export;
+using FileAccess = AssociateTestsToTestCases.Access.File.FileAccess;
 
 namespace AssociateTestsToTestCases
 {
@@ -51,17 +54,30 @@ namespace AssociateTestsToTestCases
             try
             {
                 InitializeProgram(args);
+                if (_inputOptions == null)
+                    return;
+
                 InitializeTestAssemblyPaths();
 
-                _testMethods = _fileManager.GetTestMethods(_testAssemblyPaths);
+                var csvMode = !string.IsNullOrWhiteSpace(_inputOptions.CsvOut);
+
+                _testMethods = _fileManager.GetTestMethods(_testAssemblyPaths, allowDuplicates: csvMode);
+
+                if (csvMode)
+                {
+                    CsvExporter.Write(_inputOptions.CsvOut, _testMethods);
+                    Console.WriteLine($"[SUCCESS] CSV exported to {_inputOptions.CsvOut}");
+                    return;
+                }
+
                 _testCases = _devOpsManager.GetTestCases();
                 _devOpsManager.Associate(_testMethods, _testCases);
-
                 _outputManager.OutputSummary(_testMethods, _testCases);
+
             }
             catch (Exception e)
             {
-                if (_inputOptions.DebugMode)
+                if (_inputOptions?.DebugMode == true)
                 {
                     WriteTraceToConsole(e);
                 }
@@ -84,12 +100,34 @@ namespace AssociateTestsToTestCases
             _counter = new Counter.Counter();
             _azureDevOpsColors = new AzureDevOpsColors();
             _isLocal = Environment.GetEnvironmentVariable(SystemTeamProjectName) == null;
-            _inputOptions = new CommandLineArgumentsParser(CreateCommandLineAccess(_isLocal, _messages, _azureDevOpsColors), _messages).Parse(args);
-            _testFrameWorkStrategy = RetrieveTestFrameworkStrategies().Single(x => x.TestFrameworkType == Enum.Parse<TestFrameworkType>(_inputOptions.TestFrameworkType, true));
 
-            InitializeAccesses();
-            InitializeManagers();
+            _commandLineAccess = CreateCommandLineAccess(_isLocal, _messages, _azureDevOpsColors);
+
+            _inputOptions = new CommandLineArgumentsParser(_commandLineAccess, _messages).Parse(args);
+            if (_inputOptions == null) return;
+
+            var csvMode = !string.IsNullOrWhiteSpace(_inputOptions.CsvOut);
+
+            // Need this in BOTH modes (we still load assemblies + discover tests)
+            _testFrameWorkStrategy = RetrieveTestFrameworkStrategies()
+                .Single(x => x.TestFrameworkType == Enum.Parse<TestFrameworkType>(_inputOptions.TestFrameworkType, true));
+
+            // Always init file + output
+            _fileAccess = CreateFileAccess(_testFrameWorkStrategy);
+            _outputManager = new OutputManager(_messages, _commandLineAccess, _counter);
+            _fileManager = new FileManager(_messages, _fileAccess, _commandLineAccess);
+
+            // Only init DevOps if not CSV mode
+            if (!csvMode)
+            {
+                var httpClients = RetrieveHttpClients(CreateVssConnection());
+                ValidateDevOpsCredentials(httpClients.TestManagementHttpClient);
+                _devOpsAccess = new AzureDevOpsAccess(httpClients, _messages, _commandLineAccess, _inputOptions, _counter);
+                _devOpsManager = new AzureDevOpsManager(_messages, _outputManager, _devOpsAccess, _counter);
+            }
         }
+
+
 
         private static ITestFrameworkStrategy[] RetrieveTestFrameworkStrategies()
         {
