@@ -27,15 +27,16 @@ namespace AssociateTestsToTestCases
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
             // Header
-            writer.WriteLine("Title,Assembly");
+            writer.WriteLine("Title,Assembly,TestClass");
 
             foreach (var tm in testCaseList)
             {
                 var title = TestNameFormatter.Format(tm, testNameFormat);
                 var assembly = tm.AssemblyName;
+                var testClass = tm.FullClassName;
 
                 writer.WriteLine(
-                    $"\"{Escape(title)}\",\"{Escape(assembly)}\"");
+                    $"\"{Escape(title)}\",\"{Escape(assembly)}\",\"{Escape(testClass)}\"");
             }
         }
 
