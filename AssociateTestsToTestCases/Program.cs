@@ -17,7 +17,6 @@ using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using TestMethod = AssociateTestsToTestCases.Manager.File.TestMethod;
 using AssociateTestsToTestCases.Access.File.Strategy;
-using AssociateTestsToTestCases.Export;
 using FileAccess = AssociateTestsToTestCases.Access.File.FileAccess;
 
 namespace AssociateTestsToTestCases
