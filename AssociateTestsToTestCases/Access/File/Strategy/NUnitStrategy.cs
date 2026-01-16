@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -12,12 +13,58 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
         public IEnumerable<MethodInfo> RetrieveTestMethods(Assembly testAssembly)
         {
             return testAssembly.GetTypes()
-                    .Where(type => type.GetCustomAttribute<TestFixtureAttribute>() != null)
+                    .Where(type => IsTestFixture(type))
                     .SelectMany(type => type.GetMethods()
-                        .Where(method => method.GetCustomAttributes<TestAttribute>().Any() 
-                            || method.GetCustomAttributes<TestCaseAttribute>().Any()
-                            || method.GetCustomAttributes<TestCaseSourceAttribute>().Any()
-                            || method.GetCustomAttributes<TheoryAttribute>().Any()));
+                        .Where(method => IsTestMethod(method)));
+        }
+
+        private bool IsTestFixture(Type type)
+        {
+            try
+            {
+                return type.GetCustomAttribute<TestFixtureAttribute>() != null;
+            }
+            catch
+            {
+                // Fallback: check by attribute name if NUnit assembly not loaded
+                try
+                {
+                    return type.GetCustomAttributesData()
+                        .Any(a => a.AttributeType.FullName == "NUnit.Framework.TestFixtureAttribute");
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        private bool IsTestMethod(MethodInfo method)
+        {
+            try
+            {
+                return method.GetCustomAttributes<TestAttribute>().Any() 
+                    || method.GetCustomAttributes<TestCaseAttribute>().Any()
+                    || method.GetCustomAttributes<TestCaseSourceAttribute>().Any()
+                    || method.GetCustomAttributes<TheoryAttribute>().Any();
+            }
+            catch
+            {
+                // Fallback: check by attribute name if NUnit assembly not loaded
+                try
+                {
+                    var attributes = method.GetCustomAttributesData();
+                    return attributes.Any(a => 
+                        a.AttributeType.FullName == "NUnit.Framework.TestAttribute" ||
+                        a.AttributeType.FullName == "NUnit.Framework.TestCaseAttribute" ||
+                        a.AttributeType.FullName == "NUnit.Framework.TestCaseSourceAttribute" ||
+                        a.AttributeType.FullName == "NUnit.Framework.TheoryAttribute");
+                }
+                catch
+                {
+                    return false;
+                }
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using AssociateTestsToTestCases.Access.File;
@@ -26,6 +27,52 @@ namespace TestNUnitDiscovery
                 Console.WriteLine($"Loading assembly: {dllPath}");
                 Console.WriteLine();
 
+                // Set up assembly resolution to look in the DLL's directory for dependencies
+                var dllDirectory = Path.GetDirectoryName(Path.GetFullPath(dllPath));
+                
+                // Pre-load NUnit framework if it exists to handle version mismatches
+                Assembly nunitAssembly = null;
+                var nunitPath = Path.Combine(dllDirectory, "nunit.framework.dll");
+                if (File.Exists(nunitPath))
+                {
+                    try
+                    {
+                        nunitAssembly = Assembly.LoadFrom(nunitPath);
+                        Console.WriteLine($"Pre-loaded NUnit framework from: {nunitPath} (Version: {nunitAssembly.GetName().Version})");
+                    }
+                    catch (Exception nunitEx)
+                    {
+                        Console.WriteLine($"Warning: Could not pre-load NUnit framework: {nunitEx.Message}");
+                    }
+                }
+                
+                // Register assembly resolver BEFORE loading the test assembly
+                AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+                {
+                    var assemblyName = new AssemblyName(args.Name);
+                    
+                    // For NUnit, return the pre-loaded assembly regardless of version
+                    if (assemblyName.Name.Equals("nunit.framework", StringComparison.OrdinalIgnoreCase) && nunitAssembly != null)
+                    {
+                        Console.WriteLine($"Resolving NUnit framework (requested: {assemblyName.Version}, using: {nunitAssembly.GetName().Version})");
+                        return nunitAssembly;
+                    }
+                    
+                    // Try exact match first
+                    var potentialPath = Path.Combine(dllDirectory, assemblyName.Name + ".dll");
+                    if (File.Exists(potentialPath))
+                    {
+                        return Assembly.LoadFrom(potentialPath);
+                    }
+                    var potentialPathExe = Path.Combine(dllDirectory, assemblyName.Name + ".exe");
+                    if (File.Exists(potentialPathExe))
+                    {
+                        return Assembly.LoadFrom(potentialPathExe);
+                    }
+                    
+                    return null;
+                };
+
                 var assemblyHelper = new AssemblyHelper();
                 var strategy = new NUnitStrategy();
                 
@@ -48,9 +95,11 @@ namespace TestNUnitDiscovery
                     Console.WriteLine();
                     
                     // Try to get test methods from the types that were successfully loaded
-                    var loadedTypes = ex.Types.Where(t => t != null);
+                    var loadedTypes = ex.Types.Where(t => t != null).ToList();
+                    Console.WriteLine($"Successfully loaded {loadedTypes.Count} type(s) out of {ex.Types.Length} total.");
                     testMethods = new List<MethodInfo>();
                     
+                    int testFixtureCount = 0;
                     foreach (var type in loadedTypes)
                     {
                         try
@@ -63,17 +112,29 @@ namespace TestNUnitDiscovery
                             }
                             catch
                             {
-                                // Skip this type if we can't check attributes
-                                continue;
+                                // If that fails, try checking by attribute name
+                                try
+                                {
+                                    var attributes = type.GetCustomAttributesData();
+                                    isTestFixture = attributes.Any(a => 
+                                        a.AttributeType.FullName == "NUnit.Framework.TestFixtureAttribute");
+                                }
+                                catch
+                                {
+                                    // Skip this type if we can't check attributes
+                                    continue;
+                                }
                             }
 
                             if (isTestFixture)
                             {
+                                testFixtureCount++;
                                 var methods = type.GetMethods()
                                     .Where(method =>
                                     {
                                         try
                                         {
+                                            // Try using strongly-typed attributes first
                                             return method.GetCustomAttributes<TestAttribute>().Any() 
                                                 || method.GetCustomAttributes<TestCaseAttribute>().Any()
                                                 || method.GetCustomAttributes<TestCaseSourceAttribute>().Any()
@@ -81,8 +142,20 @@ namespace TestNUnitDiscovery
                                         }
                                         catch
                                         {
-                                            // Skip methods where we can't check attributes
-                                            return false;
+                                            // If that fails (e.g., NUnit assembly not loaded), try by attribute name
+                                            try
+                                            {
+                                                var attributes = method.GetCustomAttributesData();
+                                                return attributes.Any(a => 
+                                                    a.AttributeType.FullName == "NUnit.Framework.TestAttribute" ||
+                                                    a.AttributeType.FullName == "NUnit.Framework.TestCaseAttribute" ||
+                                                    a.AttributeType.FullName == "NUnit.Framework.TestCaseSourceAttribute" ||
+                                                    a.AttributeType.FullName == "NUnit.Framework.TheoryAttribute");
+                                            }
+                                            catch
+                                            {
+                                                return false;
+                                            }
                                         }
                                     });
                                 testMethods.AddRange(methods);
@@ -94,6 +167,7 @@ namespace TestNUnitDiscovery
                             continue;
                         }
                     }
+                    Console.WriteLine($"Found {testFixtureCount} test fixture(s) in successfully loaded types.");
                 }
 
                 Console.WriteLine($"Found {testMethods.Count} test method(s):");
@@ -105,6 +179,25 @@ namespace TestNUnitDiscovery
                     Console.WriteLine("- No classes with [TestFixture] attribute");
                     Console.WriteLine("- No methods with [Test], [TestCase], [TestCaseSource], or [Theory] attributes");
                     Console.WriteLine("- Assembly doesn't use NUnit framework");
+                    Console.WriteLine();
+                    Console.WriteLine("Debug info: Listing all types in assembly...");
+                    try
+                    {
+                        var allTypes = assembly.GetTypes();
+                        Console.WriteLine($"Total types in assembly: {allTypes.Length}");
+                        foreach (var type in allTypes.Take(20)) // Show first 20 types
+                        {
+                            Console.WriteLine($"  - {type.FullName}");
+                        }
+                        if (allTypes.Length > 20)
+                        {
+                            Console.WriteLine($"  ... and {allTypes.Length - 20} more");
+                        }
+                    }
+                    catch (Exception debugEx)
+                    {
+                        Console.WriteLine($"Could not enumerate types: {debugEx.Message}");
+                    }
                 }
                 else
                 {
