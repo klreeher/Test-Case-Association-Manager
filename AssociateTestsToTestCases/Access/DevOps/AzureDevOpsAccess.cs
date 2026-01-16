@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using TestMethod = AssociateTestsToTestCases.Manager.File.TestMethod;
+using AssociateTestsToTestCases;
 
 namespace AssociateTestsToTestCases.Access.DevOps
 {
@@ -56,7 +57,8 @@ namespace AssociateTestsToTestCases.Access.DevOps
                 var testCaseNotFound = testCase == null;
                 if (testCaseNotFound)
                 {
-                    _outputAccess.WriteToConsole(string.Format(_messages.Associations.TestMethodInfo, testMethod.Name, $"{testMethod.FullClassName}.{testMethod.Name}"), _messages.Types.Error, _messages.Reasons.MissingTestCase);
+                    var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
+                    _outputAccess.WriteToConsole(string.Format(_messages.Associations.TestMethodInfo, testMethod.Name, formattedName), _messages.Types.Error, _messages.Reasons.MissingTestCase);
                     _counter.Error.TestCaseNotFound++;
                     continue;
                 }
@@ -65,7 +67,8 @@ namespace AssociateTestsToTestCases.Access.DevOps
                 var testCaseHasAutomatedStatus = testCase.AutomationStatus.Equals(AutomatedName);
                 if (testCaseHasAutomatedStatus)
                 {
-                    var testCaseIsAlreadyAutomated = testCase.AutomatedTestName.Equals($"{testMethod.FullClassName}.{testMethod.Name}");
+                    var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
+                    var testCaseIsAlreadyAutomated = testCase.AutomatedTestName.Equals(formattedName);
                     if (testCaseIsAlreadyAutomated)
                     {
                         _counter.Unaffected.AlreadyAutomated++;
@@ -79,7 +82,8 @@ namespace AssociateTestsToTestCases.Access.DevOps
                     }
                 }
 
-                var operationSuccess = AssociateTestCaseWithTestMethod(testCase.Id, $"{testMethod.FullClassName}.{testMethod.Name}", testMethod.AssemblyName, testMethod.TempId.ToString(), _inputOptions.TestType);
+                var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
+                var operationSuccess = AssociateTestCaseWithTestMethod(testCase.Id, formattedName, testMethod.AssemblyName, testMethod.TempId.ToString(), _inputOptions.TestType);
                 if (!operationSuccess)
                 {
                     _outputAccess.WriteToConsole(string.Format(_messages.Associations.TestCaseInfo, testCase.Title, testCase.Id), _messages.Types.Failure, _messages.Reasons.Association);
@@ -117,7 +121,7 @@ namespace AssociateTestsToTestCases.Access.DevOps
         public List<TestCase> ListTestCasesWithNotAvailableTestMethods(TestMethod[] testMethods, TestCase[] testCases)
         {
             return testCases
-                .Where(x => x.AutomationStatus == AutomatedName & testMethods.SingleOrDefault(y => $"{y.FullClassName}.{y.Name}".Equals(x.Title)) == null)
+                .Where(x => x.AutomationStatus == AutomatedName & testMethods.SingleOrDefault(y => TestNameFormatter.Format(y, _inputOptions.TestNameFormat).Equals(x.Title)) == null)
                 .ToList();
         }
 
@@ -141,7 +145,8 @@ namespace AssociateTestsToTestCases.Access.DevOps
 
         private TestCase GetTestCase(Dictionary<string, TestCase> testCases, TestMethod testMethod)
         {
-            testCases.TryGetValue($"{testMethod.FullClassName}.{testMethod.Name}", out var testCase);
+            var formattedName = TestNameFormatter.Format(testMethod, _inputOptions.TestNameFormat);
+            testCases.TryGetValue(formattedName, out var testCase);
 
             return testCase;
         }

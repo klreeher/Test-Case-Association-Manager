@@ -15,7 +15,7 @@ namespace AssociateTestsToTestCases.Extensions
         private const string NUnitTestAttr = "NUnit.Framework.TestAttribute";
         private const string NUnitTestCaseDataType = "NUnit.Framework.TestCaseData";
 
-        public static TestMethod[] ToTestMethodArray(this MethodInfo[] methods)
+        public static TestMethod[] ToTestMethodArray(this MethodInfo[] methods, bool expandParameterizedTests = false)
         {
             if (methods == null || methods.Length == 0) return Array.Empty<TestMethod>();
 
@@ -25,15 +25,24 @@ namespace AssociateTestsToTestCases.Extensions
             {
                 if (method == null) continue;
 
-                var expanded = ExpandNUnitCases(method).ToList();
-                if (expanded.Count == 0)
+                if (expandParameterizedTests)
                 {
-                    // Non-parameterized
-                    result.Add(ToTestMethod(method, method.Name));
+                    // Expand mode: Create one test method per parameterized variation
+                    var expanded = ExpandNUnitCases(method).ToList();
+                    if (expanded.Count == 0)
+                    {
+                        // Non-parameterized
+                        result.Add(ToTestMethod(method, method.Name));
+                    }
+                    else
+                    {
+                        result.AddRange(expanded.Select(name => ToTestMethod(method, name)));
+                    }
                 }
                 else
                 {
-                    result.AddRange(expanded.Select(name => ToTestMethod(method, name)));
+                    // Consolidate mode: Create one test method per base method (ignore parameters)
+                    result.Add(ToTestMethod(method, method.Name));
                 }
             }
 

@@ -43,5 +43,11 @@ namespace AssociateTestsToTestCases
 
         [Option('x', "debugmode", Required = false, Default = false, HelpText = "When Debug mode is turned on any exception thrown by the tool will be printed to the console. Use this only in case of issues.")]
         public bool DebugMode { get; set; }
+
+        [Option('c', "test-name-format", Required = false, HelpText = "Template string for test case names. Placeholders: {FullClassName}, {Name}, {AssemblyName}. Default: {FullClassName}.{Name}")]
+        public string TestNameFormat { get; set; }
+
+        [Option('e', "expand-parameterized-tests", Required = false, Default = false, HelpText = "When true, parameterized tests create one test case per variation. When false (default), parameterized tests create one test case per base method.")]
+        public bool ExpandParameterizedTests { get; set; }
     }
 }

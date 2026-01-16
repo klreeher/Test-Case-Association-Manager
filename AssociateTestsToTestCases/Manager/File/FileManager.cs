@@ -27,7 +27,7 @@ namespace AssociateTestsToTestCases.Manager.File
             return _fileAccess.ListTestMethods(testAssemblyPaths).IsNullOrEmpty();
         }
 
-        public TestMethod[] GetTestMethods(string[] testAssemblyPaths, bool allowDuplicates = false)
+        public TestMethod[] GetTestMethods(string[] testAssemblyPaths, bool allowDuplicates = false, bool expandParameterizedTests = false)
         {
             _outputAccess.WriteToConsole(_messages.Stages.TestMethod.Status, _messages.Types.Stage);
 
@@ -42,7 +42,7 @@ namespace AssociateTestsToTestCases.Manager.File
 
             _outputAccess.WriteToConsole(string.Format(_messages.Stages.TestMethod.Success, rawTestMethods.Length), _messages.Types.Success);
 
-            return rawTestMethods.ToTestMethodArray();
+            return rawTestMethods.ToTestMethodArray(expandParameterizedTests);
         }
 
         public string[] GetTestAssemblyPaths(string directory, string[] minimatchPatterns)

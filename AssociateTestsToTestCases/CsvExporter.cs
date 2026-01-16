@@ -9,7 +9,7 @@ namespace AssociateTestsToTestCases
 {
     public static class CsvExporter
     {
-        public static void Write(string csvPath, IEnumerable<TestMethod> testMethods)
+        public static void Write(string csvPath, IEnumerable<TestMethod> testMethods, string testNameFormat = null)
         {
             if (string.IsNullOrWhiteSpace(csvPath))
                 throw new ArgumentException("csvPath is required", nameof(csvPath));
@@ -31,7 +31,7 @@ namespace AssociateTestsToTestCases
 
             foreach (var tm in testCaseList)
             {
-                var title = $"{tm.FullClassName}.{tm.Name}";
+                var title = TestNameFormatter.Format(tm, testNameFormat);
                 var assembly = tm.AssemblyName;
 
                 writer.WriteLine(

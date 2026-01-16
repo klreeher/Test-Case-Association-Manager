@@ -42,6 +42,10 @@ namespace AssociateTestsToTestCases.Parsing
                             .Select(s => s.ToLowerInvariant())
                             .ToArray();
                         _inputOptions.TestFrameworkType = o.TestFrameworkType;
+                        _inputOptions.TestNameFormat = string.IsNullOrWhiteSpace(o.TestNameFormat) 
+                            ? _inputOptions.TestNameFormat 
+                            : o.TestNameFormat;
+                        _inputOptions.ExpandParameterizedTests = o.ExpandParameterizedTests;
 
                         var csvMode = !string.IsNullOrWhiteSpace(o.CsvOut);
                         if (!csvMode)

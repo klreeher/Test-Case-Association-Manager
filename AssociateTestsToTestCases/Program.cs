@@ -59,11 +59,11 @@ namespace AssociateTestsToTestCases
 
                 var csvMode = !string.IsNullOrWhiteSpace(_inputOptions.CsvOut);
 
-                _testMethods = _fileManager.GetTestMethods(_testAssemblyPaths, allowDuplicates: csvMode);
+                _testMethods = _fileManager.GetTestMethods(_testAssemblyPaths, allowDuplicates: csvMode, expandParameterizedTests: _inputOptions.ExpandParameterizedTests);
 
                 if (csvMode)
                 {
-                    CsvExporter.Write(_inputOptions.CsvOut, _testMethods);
+                    CsvExporter.Write(_inputOptions.CsvOut, _testMethods, _inputOptions.TestNameFormat);
                     Console.WriteLine($"[SUCCESS] CSV exported to {_inputOptions.CsvOut}");
                     return;
                 }

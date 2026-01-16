@@ -20,5 +20,9 @@
         public string[] MinimatchPatterns { get; set; }
 
         public string TestFrameworkType { get; set; }
+
+        public string TestNameFormat { get; set; } = "{FullClassName}.{Name}";
+
+        public bool ExpandParameterizedTests { get; set; } = false;
     }
 }
