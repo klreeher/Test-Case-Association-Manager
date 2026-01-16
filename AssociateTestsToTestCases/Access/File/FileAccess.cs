@@ -35,7 +35,18 @@ namespace AssociateTestsToTestCases.Access.File
                     // Some types couldn't be loaded (likely missing dependencies like NUnit framework)
                     // Try to discover tests from successfully loaded types using fallback mechanism
                     var loadedTypes = ex.Types.Where(t => t != null).ToList();
+                    Console.WriteLine($"[DEBUG] ReflectionTypeLoadException caught for {testAssemblyPath}");
+                    Console.WriteLine($"[DEBUG] Successfully loaded {loadedTypes.Count} type(s) out of {ex.Types.Length} total");
+                    if (ex.LoaderExceptions != null && ex.LoaderExceptions.Length > 0)
+                    {
+                        var nunitErrors = ex.LoaderExceptions.Where(e => e?.Message?.Contains("nunit", StringComparison.OrdinalIgnoreCase) == true).Take(3);
+                        foreach (var error in nunitErrors)
+                        {
+                            Console.WriteLine($"[DEBUG] Loader error: {error?.Message}");
+                        }
+                    }
                     
+                    int testFixtureCount = 0;
                     // Use the strategy's fallback by manually checking types
                     foreach (var type in loadedTypes)
                     {
@@ -57,6 +68,8 @@ namespace AssociateTestsToTestCases.Access.File
 
                             if (isTestFixture)
                             {
+                                testFixtureCount++;
+                                Console.WriteLine($"[DEBUG] Found test fixture: {type.FullName}");
                                 var methods = type.GetMethods()
                                     .Where(method =>
                                     {
@@ -73,7 +86,8 @@ namespace AssociateTestsToTestCases.Access.File
                                         {
                                             return false;
                                         }
-                                    });
+                                    }).ToList();
+                                Console.WriteLine($"[DEBUG] Found {methods.Count} test method(s) in {type.FullName}");
                                 testMethods.AddRange(methods);
                             }
                         }
@@ -83,9 +97,16 @@ namespace AssociateTestsToTestCases.Access.File
                             continue;
                         }
                     }
+                    Console.WriteLine($"[DEBUG] Total test fixtures found: {testFixtureCount}, Total test methods: {testMethods.Count}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DEBUG] Exception loading assembly {testAssemblyPath}: {ex.GetType().Name} - {ex.Message}");
+                    throw;
                 }
             }
 
+            Console.WriteLine($"[DEBUG] Total test methods discovered across all assemblies: {testMethods.Count}");
             return testMethods.ToArray();
         }
 
