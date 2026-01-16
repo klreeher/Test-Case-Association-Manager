@@ -23,6 +23,10 @@ namespace AssociateTestsToTestCases.Parsing
             _commandLineAccess.WriteToConsole(_messages.Stages.Argument.Status, _messages.Types.Stage);
 
             var _inputOptions = new InputOptions();
+            
+            // Load configuration from file first (command line will override)
+            ConfigurationReader.LoadFromConfigFile(_inputOptions);
+            
             using (var parser = new Parser(config => config.HelpWriter = null))
             {
                 parser.ParseArguments<Options>(args)
