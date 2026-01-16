@@ -17,6 +17,20 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
             {
                 types = testAssembly.GetTypes();
                 Console.WriteLine($"[DEBUG] NUnitStrategy: Successfully retrieved {types.Length} type(s) from assembly");
+                var typesWithAnyNUnitMethodAttrs = types.Count(t =>
+                {
+                    try
+                    {
+                        return t.GetMethods(BindingFlags.Instance|BindingFlags.Static|BindingFlags.Public|BindingFlags.NonPublic)
+                            .SelectMany(m => m.GetCustomAttributesData())
+                            .Any(a => a.AttributeType.FullName != null &&
+                                      a.AttributeType.FullName.StartsWith("NUnit.Framework.", StringComparison.Ordinal));
+                    }
+                    catch { return false; }
+                });
+
+                Console.WriteLine($"[DEBUG] NUnitStrategy: Types with ANY NUnit method attributes: {typesWithAnyNUnitMethodAttrs}");
+
             }
             catch (ReflectionTypeLoadException ex)
             {
@@ -37,26 +51,35 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
             Console.WriteLine($"[DEBUG] NUnitStrategy: Checking {types.Length} types for test fixtures...");
             int testFixtureCount = 0;
             var testMethods = new List<MethodInfo>();
-            
+
             foreach (var type in types)
             {
+                if (type == null || type.IsAbstract) continue;
+
                 try
                 {
-                    if (IsTestFixture(type))
+                    // Always scan methods first (implicit fixtures are common in NUnit)
+                    var methods = type
+                        .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        .Where(IsTestMethod)
+                        .ToList();
+
+                    // Fixture if explicitly marked OR it contains test methods
+                    if (IsTestFixture(type) || methods.Count > 0)
                     {
                         testFixtureCount++;
                         Console.WriteLine($"[DEBUG] NUnitStrategy: Found test fixture: {type.FullName}");
-                        var methods = type.GetMethods().Where(method => IsTestMethod(method)).ToList();
                         Console.WriteLine($"[DEBUG] NUnitStrategy:   Found {methods.Count} test method(s) in {type.FullName}");
                         testMethods.AddRange(methods);
                     }
                 }
                 catch (Exception typeEx)
                 {
-                    Console.WriteLine($"[DEBUG] NUnitStrategy: Error checking type {type?.FullName ?? "null"}: {typeEx.Message}");
+                    Console.WriteLine($"[DEBUG] NUnitStrategy: Error checking type {type.FullName}: {typeEx.Message}");
                 }
             }
-            
+
+
             Console.WriteLine($"[DEBUG] NUnitStrategy: Total test fixtures: {testFixtureCount}, Total test methods: {testMethods.Count}");
             return testMethods;
         }
@@ -86,7 +109,7 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
         {
             try
             {
-                return method.GetCustomAttributes<TestAttribute>().Any() 
+                return method.GetCustomAttributes<TestAttribute>().Any()
                     || method.GetCustomAttributes<TestCaseAttribute>().Any()
                     || method.GetCustomAttributes<TestCaseSourceAttribute>().Any()
                     || method.GetCustomAttributes<TheoryAttribute>().Any();
@@ -97,7 +120,7 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
                 try
                 {
                     var attributes = method.GetCustomAttributesData();
-                    return attributes.Any(a => 
+                    return attributes.Any(a =>
                         a.AttributeType.FullName == "NUnit.Framework.TestAttribute" ||
                         a.AttributeType.FullName == "NUnit.Framework.TestCaseAttribute" ||
                         a.AttributeType.FullName == "NUnit.Framework.TestCaseSourceAttribute" ||
