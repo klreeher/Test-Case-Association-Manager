@@ -97,5 +97,99 @@ namespace Test.Unit.Manager.File
             actual.Length.Should().Be(testMethods.Length);
             outputAccess.Verify(x => x.WriteToConsole(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(DefaultWriteCount));
         }
+
+        [TestMethod]
+        public void FileManager_GetTestMethods_AllowDuplicatesTrue_SkipsDuplicateValidation()
+        {
+            // Arrange
+            var fileAccessMock = new Mock<IFileAccess>();
+            var outputAccess = new Mock<IOutputAccess>();
+
+            var fixture = new Fixture();
+            var testAssemblyPaths = fixture.Create<string[]>();
+            var testMethods = new MethodInfo[]
+            {
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name),
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name),
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name)
+            };
+            var duplicateTestMethods = fixture.Create<List<string>>().Select(x => new DuplicateTestMethod(x, testMethods)).ToList();
+
+            fileAccessMock.Setup(x => x.ListTestMethods(It.IsAny<string[]>())).Returns(testMethods);
+            fileAccessMock.Setup(x => x.ListDuplicateTestMethods(It.IsAny<MethodInfo[]>())).Returns(duplicateTestMethods);
+
+            var target = new FileManagerFactory(fileAccessMock.Object, outputAccess.Object).Create();
+
+            // Act
+            var actual = target.GetTestMethods(testAssemblyPaths, allowDuplicates: true);
+
+            // Assert
+            actual.Length.Should().Be(testMethods.Length);
+            // Verify that ListDuplicateTestMethods was never called when allowDuplicates is true
+            fileAccessMock.Verify(x => x.ListDuplicateTestMethods(It.IsAny<MethodInfo[]>()), Times.Never);
+            outputAccess.Verify(x => x.WriteToConsole(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(DefaultWriteCount));
+        }
+
+        [TestMethod]
+        public void FileManager_GetTestMethods_AllowDuplicatesFalse_ValidatesDuplicates()
+        {
+            // Arrange
+            var fileAccessMock = new Mock<IFileAccess>();
+            var outputAccess = new Mock<IOutputAccess>();
+
+            var fixture = new Fixture();
+            var testAssemblyPaths = fixture.Create<string[]>();
+            var testMethods = new MethodInfo[]
+            {
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name),
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name),
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name)
+            };
+            var duplicateTestMethods = fixture.Create<List<string>>().Select(x => new DuplicateTestMethod(x, testMethods)).ToList();
+
+            fileAccessMock.Setup(x => x.ListTestMethods(It.IsAny<string[]>())).Returns(testMethods);
+            fileAccessMock.Setup(x => x.ListDuplicateTestMethods(It.IsAny<MethodInfo[]>())).Returns(duplicateTestMethods);
+
+            var target = new FileManagerFactory(fileAccessMock.Object, outputAccess.Object).Create();
+
+            // Act
+            Action actual = () => target.GetTestMethods(testAssemblyPaths, allowDuplicates: false);
+
+            // Assert
+            actual.Should().Throw<InvalidOperationException>();
+            // Verify that ListDuplicateTestMethods was called when allowDuplicates is false
+            fileAccessMock.Verify(x => x.ListDuplicateTestMethods(It.IsAny<MethodInfo[]>()), Times.Once);
+        }
+
+        [TestMethod]
+        public void FileManager_GetTestMethods_AllowDuplicatesDefault_ValidatesDuplicates()
+        {
+            // Arrange
+            var fileAccessMock = new Mock<IFileAccess>();
+            var outputAccess = new Mock<IOutputAccess>();
+
+            var fixture = new Fixture();
+            var testAssemblyPaths = fixture.Create<string[]>();
+            var testMethods = new MethodInfo[]
+            {
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name),
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name),
+                GetType().GetMethod(MethodBase.GetCurrentMethod().Name)
+            };
+            var duplicateTestMethods = fixture.Create<List<string>>().Select(x => new DuplicateTestMethod(x, testMethods)).ToList();
+
+            fileAccessMock.Setup(x => x.ListTestMethods(It.IsAny<string[]>())).Returns(testMethods);
+            fileAccessMock.Setup(x => x.ListDuplicateTestMethods(It.IsAny<MethodInfo[]>())).Returns(duplicateTestMethods);
+
+            var target = new FileManagerFactory(fileAccessMock.Object, outputAccess.Object).Create();
+
+            // Act
+            Action actual = () => target.GetTestMethods(testAssemblyPaths);
+
+            // Assert
+            actual.Should().Throw<InvalidOperationException>();
+            // Verify that ListDuplicateTestMethods was called when using default (false)
+            fileAccessMock.Verify(x => x.ListDuplicateTestMethods(It.IsAny<MethodInfo[]>()), Times.Once);
+        }
     }
 }
