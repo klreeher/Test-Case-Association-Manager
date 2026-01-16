@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Diagnostics;
-using System.Reflection;
 using AssociateTestsToTestCases.Message;
 using AssociateTestsToTestCases.Parsing;
 using Microsoft.TeamFoundation.Core.WebApi;
@@ -69,6 +68,11 @@ namespace AssociateTestsToTestCases
                     return;
                 }
 
+                if (_inputOptions.ValidationOnly)
+                {
+                    Console.WriteLine($"[ALERT] Run in Validation Only Mode - Tests Will Not Be Associated.");
+                }
+
                 _testCases = _devOpsManager.GetTestCases();
                 _devOpsManager.Associate(_testMethods, _testCases);
                 _outputManager.OutputSummary(_testMethods, _testCases);
@@ -111,19 +115,11 @@ namespace AssociateTestsToTestCases
             _testFrameWorkStrategy = RetrieveTestFrameworkStrategies()
                 .Single(x => x.TestFrameworkType == Enum.Parse<TestFrameworkType>(_inputOptions.TestFrameworkType, true));
 
-            // Always init file + output
-            _fileAccess = CreateFileAccess(_testFrameWorkStrategy);
-            _outputManager = new OutputManager(_messages, _commandLineAccess, _counter);
-            _fileManager = new FileManager(_messages, _fileAccess, _commandLineAccess);
+            // Initialize accesses (file access always, DevOps access only if not CSV mode)
+            InitializeAccesses(!csvMode);
 
-            // Only init DevOps if not CSV mode
-            if (!csvMode)
-            {
-                var httpClients = RetrieveHttpClients(CreateVssConnection());
-                ValidateDevOpsCredentials(httpClients.TestManagementHttpClient);
-                _devOpsAccess = new AzureDevOpsAccess(httpClients, _messages, _commandLineAccess, _inputOptions, _counter);
-                _devOpsManager = new AzureDevOpsManager(_messages, _outputManager, _devOpsAccess, _counter);
-            }
+            // Initialize managers (file and output always, DevOps manager only if not CSV mode)
+            InitializeManagers(!csvMode);
         }
 
 
@@ -145,21 +141,33 @@ namespace AssociateTestsToTestCases
             _testAssemblyPaths = _fileManager.GetTestAssemblyPaths(_inputOptions.Directory, _inputOptions.MinimatchPatterns);
         }
 
-        private static void InitializeAccesses()
+        private static void InitializeAccesses(bool initializeDevOps)
         {
-            _commandLineAccess = CreateCommandLineAccess(_isLocal, _messages, _azureDevOpsColors);
+            // _commandLineAccess is already created before parsing, so only create if not set
+            if (_commandLineAccess == null)
+            {
+                _commandLineAccess = CreateCommandLineAccess(_isLocal, _messages, _azureDevOpsColors);
+            }
+
             _fileAccess = CreateFileAccess(_testFrameWorkStrategy);
 
-            var httpClients = RetrieveHttpClients(CreateVssConnection());
-            ValidateDevOpsCredentials(httpClients.TestManagementHttpClient);
-            _devOpsAccess = new AzureDevOpsAccess(httpClients, _messages, _commandLineAccess, _inputOptions, _counter);
+            if (initializeDevOps)
+            {
+                var httpClients = RetrieveHttpClients(CreateVssConnection());
+                ValidateDevOpsCredentials(httpClients.TestManagementHttpClient);
+                _devOpsAccess = new AzureDevOpsAccess(httpClients, _messages, _commandLineAccess, _inputOptions, _counter);
+            }
         }
 
-        private static void InitializeManagers()
+        private static void InitializeManagers(bool initializeDevOps)
         {
             _outputManager = new OutputManager(_messages, _commandLineAccess, _counter);
             _fileManager = new FileManager(_messages, _fileAccess, _commandLineAccess);
-            _devOpsManager = new AzureDevOpsManager(_messages, _outputManager, _devOpsAccess, _counter);
+
+            if (initializeDevOps)
+            {
+                _devOpsManager = new AzureDevOpsManager(_messages, _outputManager, _devOpsAccess, _counter);
+            }
         }
 
         private static AzureDevOpsHttpClients RetrieveHttpClients(VssConnection connection)
