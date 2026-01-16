@@ -12,7 +12,19 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
 
         public IEnumerable<MethodInfo> RetrieveTestMethods(Assembly testAssembly)
         {
-            return testAssembly.GetTypes()
+            Type[] types;
+            try
+            {
+                types = testAssembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                // Some types couldn't be loaded (likely missing dependencies like NUnit framework)
+                // Use successfully loaded types only
+                types = ex.Types.Where(t => t != null).ToArray();
+            }
+
+            return types
                     .Where(type => IsTestFixture(type))
                     .SelectMany(type => type.GetMethods()
                         .Where(method => IsTestMethod(method)));
