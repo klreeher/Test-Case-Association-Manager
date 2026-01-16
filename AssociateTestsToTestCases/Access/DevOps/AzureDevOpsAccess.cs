@@ -117,7 +117,7 @@ namespace AssociateTestsToTestCases.Access.DevOps
         public List<TestCase> ListTestCasesWithNotAvailableTestMethods(TestMethod[] testMethods, TestCase[] testCases)
         {
             return testCases
-                .Where(x => x.AutomationStatus == AutomatedName & testMethods.SingleOrDefault(y => y.Name.Equals(x.Title)) == null)
+                .Where(x => x.AutomationStatus == AutomatedName & testMethods.SingleOrDefault(y => $"{y.FullClassName}.{y.Name}".Equals(x.Title)) == null)
                 .ToList();
         }
 
@@ -141,7 +141,7 @@ namespace AssociateTestsToTestCases.Access.DevOps
 
         private TestCase GetTestCase(Dictionary<string, TestCase> testCases, TestMethod testMethod)
         {
-            testCases.TryGetValue(testMethod.Name, out var testCase);
+            testCases.TryGetValue($"{testMethod.FullClassName}.{testMethod.Name}", out var testCase);
 
             return testCase;
         }

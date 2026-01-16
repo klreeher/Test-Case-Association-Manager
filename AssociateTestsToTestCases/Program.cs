@@ -128,6 +128,7 @@ namespace AssociateTestsToTestCases
 
 
 
+
         private static ITestFrameworkStrategy[] RetrieveTestFrameworkStrategies()
         {
             // todo: use reflection to retrieve these strategies.
