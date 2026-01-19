@@ -25,6 +25,12 @@ steps:
     solution: '$(solution)'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
+    msbuildArgs: >
+      /p:AssemblyVersion=1.0.$(Build.BuildId)
+      /p:FileVersion=1.0.$(Build.BuildId)
+      /p:InformationalVersion="$(Build.DefinitionName)
+      $(Build.SourceBranchName)
+      $(Build.SourceVersion)"
 
 - task: VSTest@2
   inputs:
