@@ -64,14 +64,15 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
                         .Where(IsTestMethod)
                         .ToList();
 
-                    // Only include classes explicitly marked as TestFixture that have test methods
-                    if (IsTestFixture(type) && methods.Count > 0)
+                    /* NUnit allows implicit fixtures */
+                    if (methods.Count > 0 && (IsTestFixture(type) || true ))
                     {
                         testFixtureCount++;
                         Console.WriteLine($"[DEBUG] NUnitStrategy: Found test fixture: {type.FullName}");
                         Console.WriteLine($"[DEBUG] NUnitStrategy:   Found {methods.Count} test method(s) in {type.FullName}");
                         testMethods.AddRange(methods);
                     }
+
                 }
                 catch (Exception typeEx)
                 {
