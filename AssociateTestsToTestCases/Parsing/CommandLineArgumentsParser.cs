@@ -49,7 +49,16 @@ namespace AssociateTestsToTestCases.Parsing
                         _inputOptions.TestNameFormat = string.IsNullOrWhiteSpace(o.TestNameFormat) 
                             ? _inputOptions.TestNameFormat 
                             : o.TestNameFormat;
-                        _inputOptions.ExpandParameterizedTests = o.ExpandParameterizedTests;
+                        
+                        // Only override config file value if the flag was explicitly provided in command line
+                        // Check if --expand-parameterized-tests appears in args (case-insensitive)
+                        var expandFlagProvided = args.Any(arg => 
+                            arg.Equals("--expand-parameterized-tests", StringComparison.OrdinalIgnoreCase) ||
+                            arg.StartsWith("--expand-parameterized-tests=", StringComparison.OrdinalIgnoreCase));
+                        if (expandFlagProvided)
+                        {
+                            _inputOptions.ExpandParameterizedTests = o.ExpandParameterizedTests;
+                        }
 
                         var csvMode = !string.IsNullOrWhiteSpace(o.CsvOut);
                         if (!csvMode)
