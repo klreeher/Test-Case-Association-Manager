@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Diagnostics;
+using System.Reflection;
 using AssociateTestsToTestCases.Message;
 using AssociateTestsToTestCases.Parsing;
 using Microsoft.TeamFoundation.Core.WebApi;
