@@ -110,9 +110,10 @@ namespace AssociateTestsToTestCases.Access.File
             return duplicateTestMethods;
         }
         static string MethodKey(MethodInfo m) =>
-            $"{m.DeclaringType?.FullName}.{m.Name}(" +
+            $"{m.Name}(" +
             string.Join(",", m.GetParameters().Select(p => p.ParameterType.FullName)) +
             ")";
+
 
         public string[] ListTestAssemblyPaths(string directory, string[] minimatchPatterns)
         {
