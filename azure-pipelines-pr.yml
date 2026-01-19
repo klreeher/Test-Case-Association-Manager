@@ -19,18 +19,15 @@ steps:
 - task: NuGetCommand@2
   inputs:
     restoreSolution: '$(solution)'
-
 - task: VSBuild@1
   inputs:
     solution: '$(solution)'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
     msbuildArgs: >
-      /p:AssemblyVersion=1.0.$(Build.BuildId)
-      /p:FileVersion=1.0.$(Build.BuildId)
-      /p:InformationalVersion="$(Build.DefinitionName)
-      $(Build.SourceBranchName)
-      $(Build.SourceVersion)"
+      /p:AssemblyVersion=1.0.0.0
+      /p:FileVersion=1.0.$(Build.BuildId).0
+      /p:InformationalVersion="$(Build.DefinitionName) $(Build.SourceBranchName) $(Build.SourceVersion)"
 
 - task: VSTest@2
   inputs:
