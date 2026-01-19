@@ -49,6 +49,13 @@ namespace AssociateTestsToTestCases
 
         private static void Main(string[] args)
         {
+            
+            var version =
+                Assembly.GetExecutingAssembly()
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                    ?.InformationalVersion;
+
+            Console.WriteLine($"AssociateTestsToTestCases :: {version}");
             try
             {
                 InitializeProgram(args);
