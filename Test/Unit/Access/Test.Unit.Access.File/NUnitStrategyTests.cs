@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Reflection;
 using AutoFixture;
@@ -112,32 +113,40 @@ namespace Test.Unit.Access.File
         }
 
         [TestMethod]
-        public void NUnitStrategy_RetrieveTestMethods_NonTestMethodsExcluded()
+        public void NUnitStrategy_RetrieveTestMethods_ExcludesMethodsWithoutNUnitAttributes()
         {
             // Arrange
             var testAssembly = Assembly.GetExecutingAssembly();
 
             // Act
-            var actual = _strategy.RetrieveTestMethods(testAssembly);
+            var actual = _strategy.RetrieveTestMethods(testAssembly).ToList();
 
             // Assert
-            var regularMethod = actual.FirstOrDefault(m => m.Name == "RegularMethod");
-            regularMethod.Should().BeNull();
+            actual.Should().NotBeEmpty("there should be at least one NUnit test method in this assembly");
+
+            actual.Should().OnlyContain(m =>
+                m.GetCustomAttributesData().Any(a =>
+                    a.AttributeType.FullName != null &&
+                    a.AttributeType.FullName.StartsWith("NUnit.Framework.", StringComparison.Ordinal)),
+                "only methods with NUnit test attributes should be returned");
         }
 
+
         [TestMethod]
-        public void NUnitStrategy_RetrieveTestMethods_NonTestFixtureClassesExcluded()
+        public void NUnitStrategy_RetrieveTestMethods_ImplicitFixtureClassesIncluded()
         {
             // Arrange
             var testAssembly = Assembly.GetExecutingAssembly();
 
             // Act
-            var actual = _strategy.RetrieveTestMethods(testAssembly);
+            var actual = _strategy.RetrieveTestMethods(testAssembly).ToList();
 
             // Assert
             var testInNonFixture = actual.FirstOrDefault(m => m.Name == "TestInNonFixture");
-            testInNonFixture.Should().BeNull();
+            testInNonFixture.Should().NotBeNull("NUnit allows implicit fixtures (classes without [TestFixture]) when they contain test methods");
+            testInNonFixture!.DeclaringType!.FullName.Should().Be("Test.Unit.Access.File.NonTestFixtureClass");
         }
+
 
         [TestMethod]
         public void NUnitStrategy_RetrieveTestMethods_AllAttributesCombined()
