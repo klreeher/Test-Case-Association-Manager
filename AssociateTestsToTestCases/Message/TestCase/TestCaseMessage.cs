@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 
 namespace AssociateTestsToTestCases.Message.TestCase
 {
@@ -7,7 +7,7 @@ namespace AssociateTestsToTestCases.Message.TestCase
         private const string Separator = ", ";
         private const string IdsName = "Ids: ";
 
-        public readonly string Duplicate = "Test Case '{0}' ({1})";
+        public readonly string Duplicate = "Azure DevOps Test Case '{0}' ({1})";
 
         public virtual string GetDuplicateTestCaseNamesString(Access.DevOps.TestCase[] testCases)
         {

@@ -60,18 +60,18 @@ namespace AssociateTestsToTestCases.Access.File.Strategy
                 {
                     // Always scan methods first
                     var methods = type
-                        .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
                         .Where(IsTestMethod)
                         .ToList();
 
-                    /* NUnit allows implicit fixtures */
-                    if (methods.Count > 0 && (IsTestFixture(type) || true ))
+                    if (methods.Count > 0)
                     {
                         testFixtureCount++;
                         Console.WriteLine($"[DEBUG] NUnitStrategy: Found test fixture: {type.FullName}");
                         Console.WriteLine($"[DEBUG] NUnitStrategy:   Found {methods.Count} test method(s) in {type.FullName}");
                         testMethods.AddRange(methods);
                     }
+
 
                 }
                 catch (Exception typeEx)

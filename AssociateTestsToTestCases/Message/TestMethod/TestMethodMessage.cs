@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 
 namespace AssociateTestsToTestCases.Message.TestMethod
@@ -7,7 +7,7 @@ namespace AssociateTestsToTestCases.Message.TestMethod
     {
         private const string Separator = " & ";
 
-        public readonly string Duplicate = "Test Method '{0}' ({1})";
+        public readonly string Duplicate = "DLL Test Method '{0}' ({1})";
 
         public string GetDuplicateTestMethodNamesString(MethodInfo[] testMethods)
         {

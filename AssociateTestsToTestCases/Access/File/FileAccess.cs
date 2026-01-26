@@ -83,7 +83,38 @@ namespace AssociateTestsToTestCases.Access.File
             }
 
             Console.WriteLine($"[DEBUG] Total test methods discovered across all assemblies: {testMethods.Count}");
-            return testMethods.ToArray();
+            return testMethods
+                .Distinct(MethodInfoComparer.Instance)
+                .ToArray();
+        }
+        public sealed class MethodInfoComparer : IEqualityComparer<MethodInfo>
+        {
+            public static readonly MethodInfoComparer Instance = new();
+
+            public bool Equals(MethodInfo x, MethodInfo y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null || y is null) return false;
+
+                return (x.DeclaringType ?? x.ReflectedType) ==
+                       (y.DeclaringType ?? y.ReflectedType)
+                       && x.Name == y.Name
+                       && x.GetParameters()
+                           .Select(p => p.ParameterType)
+                           .SequenceEqual(y.GetParameters().Select(p => p.ParameterType));
+            }
+
+            public int GetHashCode(MethodInfo obj)
+            {
+                unchecked
+                {
+                    int hash = (obj.DeclaringType ?? obj.ReflectedType)?.GetHashCode() ?? 0;
+                    hash = (hash * 397) ^ obj.Name.GetHashCode();
+                    foreach (var p in obj.GetParameters())
+                        hash = (hash * 397) ^ p.ParameterType.GetHashCode();
+                    return hash;
+                }
+            }
         }
 
         public List<DuplicateTestMethod> ListDuplicateTestMethods(MethodInfo[] testMethods)
@@ -91,7 +122,7 @@ namespace AssociateTestsToTestCases.Access.File
             var duplicateTestMethods = new List<DuplicateTestMethod>();
 
             var duplicates = testMethods
-                .Select(m => $"{m.DeclaringType?.FullName}.{MethodKey(m)}")
+                .Select(m => $"{(m.DeclaringType ?? m.ReflectedType)?.FullName}.{MethodKey(m)}")
                 .GroupBy(x => x)
                 .Where(g => g.Count() > 1)
                 .Select(g => g.Key)
@@ -102,7 +133,7 @@ namespace AssociateTestsToTestCases.Access.File
                 duplicateTestMethods.Add(new DuplicateTestMethod(
                     duplicate,
                     testMethods
-                        .Where(m => $"{m.DeclaringType?.FullName}.{MethodKey(m)}" == duplicate)
+                        .Where(m => $"{(m.DeclaringType ?? m.ReflectedType)?.FullName}.{MethodKey(m)}" == duplicate)
                         .ToArray()
                 ));
             }
